@@ -1,10 +1,9 @@
 const std = @import("std");
 const builtin = @import("builtin");
-const CrossTarget = std.zig.CrossTarget;
 
-pub fn linkPcre(vendored_pcre: bool, libExe: *std.build.LibExeObjStep) void {
+pub fn linkPcre(vendored_pcre: bool, libExe: *std.Build.Step.Compile) void {
     if (vendored_pcre) {
-        libExe.addCSourceFiles(&pcreSources, &buildOptions);
+        libExe.addCSourceFiles(.{ .files = &pcreSources, .flags = &buildOptions });
     } else {
         if (builtin.os.tag == .windows) {
             libExe.linkSystemLibrary("pcre");
@@ -12,7 +11,7 @@ pub fn linkPcre(vendored_pcre: bool, libExe: *std.build.LibExeObjStep) void {
             libExe.linkSystemLibrary("libpcre");
         }
     }
-    if (libExe.target.isDarwin()) {
+    if (builtin.os.tag == .macos) {
         // useful for package maintainers
         // see https://github.com/ziglang/zig/issues/13388
         libExe.headerpad_max_install_names = true;
@@ -40,12 +39,12 @@ pub fn build(b: *std.Build) !void {
 
         fastfec_cli.linkLibC();
 
-        fastfec_cli.addCSourceFiles(&libSources, &buildOptions);
+        fastfec_cli.addCSourceFiles(.{ .files = &libSources, .flags = &buildOptions });
         linkPcre(vendored_pcre, fastfec_cli);
-        fastfec_cli.addCSourceFiles(&.{
+        fastfec_cli.addCSourceFiles(.{ .files = &.{
             "src/cli.c",
             "src/main.c",
-        }, &buildOptions);
+        }, .flags = &buildOptions });
         b.installArtifact(fastfec_cli);
     }
 
@@ -57,18 +56,18 @@ pub fn build(b: *std.Build) !void {
             .optimize = optimize,
             .version = null,
         });
-        if (fastfec_lib.target.isDarwin()) {
+        if (builtin.os.tag == .macos) {
             // useful for package maintainers
             // see https://github.com/ziglang/zig/issues/13388
             fastfec_lib.headerpad_max_install_names = true;
         }
         fastfec_lib.linkLibC();
-        fastfec_lib.addCSourceFiles(&libSources, &buildOptions);
+        fastfec_lib.addCSourceFiles(.{ .files = &libSources, .flags = &buildOptions });
         linkPcre(vendored_pcre, fastfec_lib);
         b.installArtifact(fastfec_lib);
     } else if (wasm) {
         // Wasm library build step
-        const wasm_target = CrossTarget{ .cpu_arch = .wasm32, .os_tag = .freestanding };
+        const wasm_target = b.resolveTargetQuery(.{ .cpu_arch = .wasm32, .os_tag = .freestanding });
         const fastfec_wasm = b.addSharedLibrary(.{
             .name = "fastfec",
             .target = wasm_target,
@@ -76,7 +75,7 @@ pub fn build(b: *std.Build) !void {
             .version = null,
         });
         fastfec_wasm.linkLibC();
-        fastfec_wasm.addCSourceFiles(&libSources, &buildOptions);
+        fastfec_wasm.addCSourceFiles(.{ .files = &libSources, .flags = &buildOptions });
         linkPcre(vendored_pcre, fastfec_wasm);
         fastfec_wasm.addCSourceFile(.{ .file = .{
             .path = "src/wasm.c",
@@ -85,14 +84,16 @@ pub fn build(b: *std.Build) !void {
     }
 
     // Test step
-    var prev_test_step: ?*std.build.Step = null;
+    var prev_test_step: ?*std.Build.Step = null;
     for (tests) |test_file| {
         const base_file = std.fs.path.basename(test_file);
         const subtest_exe = b.addExecutable(.{
             .name = base_file,
+            .target = target,
+            .optimize = optimize,
         });
         subtest_exe.linkLibC();
-        subtest_exe.addCSourceFiles(&testIncludes, &buildOptions);
+        subtest_exe.addCSourceFiles(.{ .files = &testIncludes, .flags = &buildOptions });
         linkPcre(vendored_pcre, subtest_exe);
         subtest_exe.addCSourceFile(.{
             .file = .{ .path = test_file },

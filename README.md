@@ -95,7 +95,7 @@ The following was performed on an M1 Macbook Air:
 
 ### Dependencies
 
-FastFEC has no external C dependencies. [PCRE](./src/pcre/README) is bundled with the library to ensure compatibility with Zig's build system and cross-platform compilation.
+FastFEC vendors PCRE2 (`pcre2-8`) by default in `src/pcre2`, ensuring consistent builds across platforms (including wasm). Packagers may switch to system PCRE2 if desired, but no system dependency is required for normal builds.
 
 ### Building
 

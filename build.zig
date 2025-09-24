@@ -65,7 +65,7 @@ pub fn build(b: *std.Build) !void {
     if (!wasm and !skip_lib) {
         // Library build step - simplified for compatibility
         if (@hasDecl(@TypeOf(b.*), "addSharedLibrary")) {
-            const fastfec_lib = b.addSharedLibrary(.{ .name = "fastfec", .version = null });
+            const fastfec_lib = b.addSharedLibrary(.{ .name = "fastfec", .version = null, .target = target, .optimize = optimize });
             if (@hasDecl(@TypeOf(fastfec_lib.*), "setTarget")) fastfec_lib.setTarget(target);
             if (@hasDecl(@TypeOf(fastfec_lib.*), "setOptimize")) fastfec_lib.setOptimize(optimize);
             if (builtin.os.tag == .macos) {

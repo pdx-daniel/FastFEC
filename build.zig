@@ -46,7 +46,10 @@ pub fn build(b: *std.Build) !void {
 
     // Main build step
     if (!lib_only and !wasm) {
-        var fastfec_cli = b.addExecutable(.{ .name = "fastfec", .root_module = b.createModule(.{ .target = target, .optimize = optimize }) });
+        const HasRootModuleInOptions = @hasField(std.Build.ExecutableOptions, "root_module");
+        const fastfec_cli = b.addExecutable(.{ .name = "fastfec", .root_module = if (HasRootModuleInOptions) b.createModule(.{ .target = target, .optimize = optimize }) else undefined });
+        if (@hasDecl(@TypeOf(fastfec_cli.*), "setTarget")) fastfec_cli.setTarget(target);
+        if (@hasDecl(@TypeOf(fastfec_cli.*), "setOptimize")) fastfec_cli.setOptimize(optimize);
 
         fastfec_cli.linkLibC();
 
@@ -60,10 +63,14 @@ pub fn build(b: *std.Build) !void {
     }
 
     if (!wasm and !skip_lib) {
-        // Library build step (skip on Zig 0.15 where addSharedLibrary is missing)
+        // Library build step - simplified for compatibility
         if (@hasDecl(@TypeOf(b.*), "addSharedLibrary")) {
-            var fastfec_lib = b.addSharedLibrary(.{ .name = "fastfec", .version = null, .root_module = b.createModule(.{ .target = target, .optimize = optimize }) });
+            const fastfec_lib = b.addSharedLibrary(.{ .name = "fastfec", .version = null });
+            if (@hasDecl(@TypeOf(fastfec_lib.*), "setTarget")) fastfec_lib.setTarget(target);
+            if (@hasDecl(@TypeOf(fastfec_lib.*), "setOptimize")) fastfec_lib.setOptimize(optimize);
             if (builtin.os.tag == .macos) {
+                // useful for package maintainers
+                // see https://github.com/ziglang/zig/issues/13388
                 fastfec_lib.headerpad_max_install_names = true;
             }
             fastfec_lib.linkLibC();
@@ -74,10 +81,12 @@ pub fn build(b: *std.Build) !void {
     } else if (wasm) {
         // Wasm library build step
         const wasm_target = b.resolveTargetQuery(.{ .cpu_arch = .wasm32, .os_tag = .wasi });
-        var fastfec_wasm = b.addExecutable(.{ .name = "fastfec", .root_module = b.createModule(.{ .target = wasm_target, .optimize = optimize }) });
+        const HasRootModuleInOptions = @hasField(std.Build.ExecutableOptions, "root_module");
+        const fastfec_wasm = b.addExecutable(.{ .name = "fastfec", .root_module = if (HasRootModuleInOptions) b.createModule(.{ .target = wasm_target, .optimize = optimize }) else undefined });
+        if (@hasDecl(@TypeOf(fastfec_wasm.*), "setTarget")) fastfec_wasm.setTarget(wasm_target);
+        if (@hasDecl(@TypeOf(fastfec_wasm.*), "setOptimize")) fastfec_wasm.setOptimize(optimize);
         fastfec_wasm.entry = .disabled;
         fastfec_wasm.import_symbols = true;
-        fastfec_wasm.root_module.export_symbol_names = &.{"wasmFec"};
         fastfec_wasm.linkLibC();
         fastfec_wasm.addCSourceFiles(.{ .files = &libSources, .flags = &buildOptions });
         linkPcre(fastfec_wasm, b);
@@ -89,7 +98,10 @@ pub fn build(b: *std.Build) !void {
     var prev_test_step: ?*std.Build.Step = null;
     for (tests) |test_file| {
         const base_file = std.fs.path.basename(test_file);
-        var subtest_exe = b.addExecutable(.{ .name = base_file, .root_module = b.createModule(.{ .target = target, .optimize = optimize }) });
+        const HasRootModuleInOptions = @hasField(std.Build.ExecutableOptions, "root_module");
+        const subtest_exe = b.addExecutable(.{ .name = base_file, .root_module = if (HasRootModuleInOptions) b.createModule(.{ .target = target, .optimize = optimize }) else undefined });
+        if (@hasDecl(@TypeOf(subtest_exe.*), "setTarget")) subtest_exe.setTarget(target);
+        if (@hasDecl(@TypeOf(subtest_exe.*), "setOptimize")) subtest_exe.setOptimize(optimize);
         subtest_exe.linkLibC();
         subtest_exe.addCSourceFiles(.{ .files = &testIncludes, .flags = &buildOptions });
         linkPcre(subtest_exe, b);

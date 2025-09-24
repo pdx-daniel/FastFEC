@@ -11,6 +11,7 @@ import datetime
 import logging
 import os
 import pathlib
+import platform
 from ctypes import (
     CFUNCTYPE,
     POINTER,
@@ -68,9 +69,20 @@ def find_fastfec_lib():
     This method tries searching in package directories, with a fallback to the local
     zig build directory for development work.
     """
-    prefixes = ["fastfec", "libfastfec"]
+    # Prioritize platform-appropriate suffixes
+    system = platform.system().lower()
+    if system == "darwin":
+        suffixes = ["dylib", "so", "dll"]
+    elif system == "linux":
+        suffixes = ["so", "dylib", "dll"]
+    elif system == "windows":
+        suffixes = ["dll", "so", "dylib"]
+    else:
+        suffixes = ["so", "dylib", "dll"]
 
-    suffixes = ["so", "dylib", "dll"]
+    # Prefer libfastfec prefix for shared libraries
+    prefixes = ["libfastfec", "fastfec"]
+
     directories = [
         SCRIPT_DIR,
         PARENT_DIR,

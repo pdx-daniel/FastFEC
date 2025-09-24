@@ -91,7 +91,7 @@ The following was performed on an M1 Macbook Air:
 
 ### Build system
 
-[Zig](https://ziglang.org/) is used to build and compile the project. Download and install the latest version of Zig (>=0.12.0) by following the instructions on the website (you can verify it's working by typing `zig` in the terminal and seeing help commands).
+[Zig](https://ziglang.org/) is used to build and compile the project. Download and install Zig 0.14.0 or later by following the instructions on the website (you can verify it's working by typing `zig` in the terminal and seeing help commands).
 
 ### Dependencies
 
@@ -99,7 +99,7 @@ FastFEC vendors PCRE2 (`pcre2-8`) by default in `src/pcre2`, ensuring consistent
 
 ### Requirements
 
-- Zig >= 0.12.1 (tested on 0.12.1, 0.14, and 0.15)
+- Zig >= 0.14.0 (tested on 0.14.0 and 0.15.1)
 - No external C dependencies required (PCRE2 is vendored)
 
 ### Building

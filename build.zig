@@ -28,10 +28,7 @@ pub fn build(b: *std.Build) !void {
 
     // Main build step
     if (!lib_only and !wasm) {
-        const HasRootModuleInOptions = @hasField(std.Build.ExecutableOptions, "root_module");
-        const fastfec_cli = b.addExecutable(.{ .name = "fastfec", .root_module = if (HasRootModuleInOptions) b.createModule(.{ .target = target, .optimize = optimize }) else undefined });
-        if (@hasDecl(@TypeOf(fastfec_cli.*), "setTarget")) fastfec_cli.setTarget(target);
-        if (@hasDecl(@TypeOf(fastfec_cli.*), "setOptimize")) fastfec_cli.setOptimize(optimize);
+        const fastfec_cli = b.addExecutable(.{ .name = "fastfec", .target = target, .optimize = optimize });
 
         fastfec_cli.linkLibC();
 

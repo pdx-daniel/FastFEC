@@ -10,7 +10,7 @@ pub fn linkPcre(libExe: *std.Build.Step.Compile) void {
     };
     libExe.addIncludePath(.{ .cwd_relative = "src/pcre2" });
     libExe.addCSourceFiles(.{ .files = &pcre2Sources, .flags = &pcre2BuildOptions });
-    
+
     if (builtin.os.tag == .macos) {
         // useful for package maintainers
         // see https://github.com/ziglang/zig/issues/13388
@@ -42,21 +42,17 @@ pub fn build(b: *std.Build) !void {
     }
 
     if (!wasm and !skip_lib) {
-        // Library build step - simplified for compatibility
-        if (@hasDecl(@TypeOf(b.*), "addSharedLibrary")) {
-            const fastfec_lib = b.addSharedLibrary(.{ .name = "fastfec", .version = null, .target = target, .optimize = optimize });
-            if (@hasDecl(@TypeOf(fastfec_lib.*), "setTarget")) fastfec_lib.setTarget(target);
-            if (@hasDecl(@TypeOf(fastfec_lib.*), "setOptimize")) fastfec_lib.setOptimize(optimize);
-            if (builtin.os.tag == .macos) {
-                // useful for package maintainers
-                // see https://github.com/ziglang/zig/issues/13388
-                fastfec_lib.headerpad_max_install_names = true;
-            }
-            fastfec_lib.linkLibC();
-            fastfec_lib.addCSourceFiles(.{ .files = &libSources, .flags = &buildOptions });
-            linkPcre(fastfec_lib);
-            b.installArtifact(fastfec_lib);
+        // Library build step
+        const fastfec_lib = b.addSharedLibrary(.{ .name = "fastfec", .version = null, .target = target, .optimize = optimize });
+        if (builtin.os.tag == .macos) {
+            // useful for package maintainers
+            // see https://github.com/ziglang/zig/issues/13388
+            fastfec_lib.headerpad_max_install_names = true;
         }
+        fastfec_lib.linkLibC();
+        fastfec_lib.addCSourceFiles(.{ .files = &libSources, .flags = &buildOptions });
+        linkPcre(fastfec_lib);
+        b.installArtifact(fastfec_lib);
     } else if (wasm) {
         // Wasm library build step
         const wasm_target = b.resolveTargetQuery(.{ .cpu_arch = .wasm32, .os_tag = .wasi });

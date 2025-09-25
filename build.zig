@@ -1,34 +1,16 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-pub fn linkPcre(libExe: *std.Build.Step.Compile, b: *std.Build) void {
-    // Prefer vendored PCRE2 if present in src/pcre2; otherwise, link system pcre2-8
-    if (std.fs.cwd().openDir("src/pcre2", .{ .iterate = true })) |dir_val| {
-        var dir = dir_val;
-        defer dir.close();
-        var files = std.ArrayListUnmanaged([]const u8){};
-        defer files.deinit(b.allocator);
-        var it = dir.iterate();
-        while (it.next() catch null) |entry| {
-            if (entry.kind == .file and std.mem.endsWith(u8, entry.name, ".c")) {
-                const path = std.fmt.allocPrint(b.allocator, "src/pcre2/{s}", .{entry.name}) catch continue;
-                files.append(b.allocator, path) catch continue;
-            }
-        }
-
-        if (files.items.len > 0) {
-            const pcre2BuildOptions = [_][]const u8{
-                "-DPCRE2_CODE_UNIT_WIDTH=8",
-                "-DPCRE2_STATIC",
-                "-DHAVE_CONFIG_H",
-            };
-            libExe.addIncludePath(.{ .cwd_relative = "src/pcre2" });
-            libExe.addCSourceFiles(.{ .files = files.items, .flags = &pcre2BuildOptions });
-        }
-    } else |_| {
-        // No vendored PCRE2 present; error for wasm builds and suggest installing pcre2 for host builds
-        // Keep silent here; our project expects src/pcre2 to be present
-    }
+pub fn linkPcre(libExe: *std.Build.Step.Compile) void {
+    // Use vendored PCRE2 - we expect src/pcre2 to be present
+    const pcre2BuildOptions = [_][]const u8{
+        "-DPCRE2_CODE_UNIT_WIDTH=8",
+        "-DPCRE2_STATIC",
+        "-DHAVE_CONFIG_H",
+    };
+    libExe.addIncludePath(.{ .cwd_relative = "src/pcre2" });
+    libExe.addCSourceFiles(.{ .files = &pcre2Sources, .flags = &pcre2BuildOptions });
+    
     if (builtin.os.tag == .macos) {
         // useful for package maintainers
         // see https://github.com/ziglang/zig/issues/13388
@@ -54,7 +36,7 @@ pub fn build(b: *std.Build) !void {
         fastfec_cli.linkLibC();
 
         fastfec_cli.addCSourceFiles(.{ .files = &libSources, .flags = &buildOptions });
-        linkPcre(fastfec_cli, b);
+        linkPcre(fastfec_cli);
         fastfec_cli.addCSourceFiles(.{ .files = &.{
             "src/cli.c",
             "src/main.c",
@@ -75,7 +57,7 @@ pub fn build(b: *std.Build) !void {
             }
             fastfec_lib.linkLibC();
             fastfec_lib.addCSourceFiles(.{ .files = &libSources, .flags = &buildOptions });
-            linkPcre(fastfec_lib, b);
+            linkPcre(fastfec_lib);
             b.installArtifact(fastfec_lib);
         }
     } else if (wasm) {
@@ -89,7 +71,7 @@ pub fn build(b: *std.Build) !void {
         fastfec_wasm.import_symbols = true;
         fastfec_wasm.linkLibC();
         fastfec_wasm.addCSourceFiles(.{ .files = &libSources, .flags = &buildOptions });
-        linkPcre(fastfec_wasm, b);
+        linkPcre(fastfec_wasm);
         fastfec_wasm.addCSourceFile(.{ .file = .{ .cwd_relative = "src/wasm.c" }, .flags = &buildOptions });
         b.installArtifact(fastfec_wasm);
     }
@@ -104,7 +86,7 @@ pub fn build(b: *std.Build) !void {
         if (@hasDecl(@TypeOf(subtest_exe.*), "setOptimize")) subtest_exe.setOptimize(optimize);
         subtest_exe.linkLibC();
         subtest_exe.addCSourceFiles(.{ .files = &testIncludes, .flags = &buildOptions });
-        linkPcre(subtest_exe, b);
+        linkPcre(subtest_exe);
         subtest_exe.addCSourceFile(.{ .file = .{ .cwd_relative = test_file }, .flags = &buildOptions });
         const subtest_cmd = b.addRunArtifact(subtest_exe);
         if (prev_test_step != null) {
@@ -125,6 +107,34 @@ const libSources = [_][]const u8{
     "src/writer.c",
     "src/fec.c",
     "src/regex.c",
+};
+const pcre2Sources = [_][]const u8{
+    "src/pcre2/pcre2_auto_possess.c",
+    "src/pcre2/pcre2_chartables.c",
+    "src/pcre2/pcre2_compile.c",
+    "src/pcre2/pcre2_config.c",
+    "src/pcre2/pcre2_context.c",
+    "src/pcre2/pcre2_convert.c",
+    "src/pcre2/pcre2_dfa_match.c",
+    "src/pcre2/pcre2_error.c",
+    "src/pcre2/pcre2_extuni.c",
+    "src/pcre2/pcre2_find_bracket.c",
+    "src/pcre2/pcre2_match.c",
+    "src/pcre2/pcre2_match_data.c",
+    "src/pcre2/pcre2_newline.c",
+    "src/pcre2/pcre2_ord2utf.c",
+    "src/pcre2/pcre2_pattern_info.c",
+    "src/pcre2/pcre2_script_run.c",
+    "src/pcre2/pcre2_serialize.c",
+    "src/pcre2/pcre2_string_utils.c",
+    "src/pcre2/pcre2_study.c",
+    "src/pcre2/pcre2_substitute.c",
+    "src/pcre2/pcre2_substring.c",
+    "src/pcre2/pcre2_tables.c",
+    "src/pcre2/pcre2_ucd.c",
+    "src/pcre2/pcre2_ucptables.c",
+    "src/pcre2/pcre2_valid_utf.c",
+    "src/pcre2/pcre2_xclass.c",
 };
 const tests = [_][]const u8{ "src/buffer_test.c", "src/csv_test.c", "src/writer_test.c", "src/cli_test.c" };
 const testIncludes = [_][]const u8{ "src/buffer.c", "src/memory.c", "src/encoding.c", "src/csv.c", "src/writer.c", "src/regex.c", "src/cli.c" };

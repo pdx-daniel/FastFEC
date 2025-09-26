@@ -66,7 +66,7 @@ pub fn build(b: *std.Build) !void {
     } else if (wasm) {
         // Wasm library build step
         const wasm_target = b.resolveTargetQuery(.{ .cpu_arch = .wasm32, .os_tag = .wasi });
-        const fastfec_wasm = b.addExecutable(.{ .name = "fastfec", .target = wasm_target, .optimize = optimize });
+        const fastfec_wasm = b.addSharedLibrary(.{ .name = "fastfec", .version = null, .target = wasm_target, .optimize = optimize });
         fastfec_wasm.entry = .disabled;
         fastfec_wasm.import_symbols = true;
         fastfec_wasm.linkLibC();

@@ -56,10 +56,7 @@ pub fn build(b: *std.Build) !void {
     } else if (wasm) {
         // Wasm library build step
         const wasm_target = b.resolveTargetQuery(.{ .cpu_arch = .wasm32, .os_tag = .wasi });
-        const HasRootModuleInOptions = @hasField(std.Build.ExecutableOptions, "root_module");
-        const fastfec_wasm = b.addExecutable(.{ .name = "fastfec", .root_module = if (HasRootModuleInOptions) b.createModule(.{ .target = wasm_target, .optimize = optimize }) else undefined });
-        if (@hasDecl(@TypeOf(fastfec_wasm.*), "setTarget")) fastfec_wasm.setTarget(wasm_target);
-        if (@hasDecl(@TypeOf(fastfec_wasm.*), "setOptimize")) fastfec_wasm.setOptimize(optimize);
+        const fastfec_wasm = b.addExecutable(.{ .name = "fastfec", .target = wasm_target, .optimize = optimize });
         fastfec_wasm.entry = .disabled;
         fastfec_wasm.import_symbols = true;
         fastfec_wasm.linkLibC();

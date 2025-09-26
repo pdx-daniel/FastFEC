@@ -73,10 +73,7 @@ pub fn build(b: *std.Build) !void {
     var prev_test_step: ?*std.Build.Step = null;
     for (tests) |test_file| {
         const base_file = std.fs.path.basename(test_file);
-        const HasRootModuleInOptions = @hasField(std.Build.ExecutableOptions, "root_module");
-        const subtest_exe = b.addExecutable(.{ .name = base_file, .root_module = if (HasRootModuleInOptions) b.createModule(.{ .target = target, .optimize = optimize }) else undefined });
-        if (@hasDecl(@TypeOf(subtest_exe.*), "setTarget")) subtest_exe.setTarget(target);
-        if (@hasDecl(@TypeOf(subtest_exe.*), "setOptimize")) subtest_exe.setOptimize(optimize);
+        const subtest_exe = b.addExecutable(.{ .name = base_file, .target = target, .optimize = optimize });
         subtest_exe.linkLibC();
         subtest_exe.addCSourceFiles(.{ .files = &testIncludes, .flags = &buildOptions });
         linkPcre(subtest_exe);

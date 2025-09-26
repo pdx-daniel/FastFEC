@@ -1,6 +1,7 @@
 .*
 !.gitignore
 !.github
+!.gitattributes
 !.pre-commit-config.yaml
 bin
 *.test
@@ -40,4 +41,3 @@ share/python-wheels/
 .installed.cfg
 *.egg
 *.whl
-MANIFEST

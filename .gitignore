@@ -3,6 +3,7 @@
 !.github
 !.gitattributes
 !.pre-commit-config.yaml
+!.git-blame-ignore-revs
 bin
 *.test
 *.fec
@@ -40,4 +41,4 @@ share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-*.whl
+

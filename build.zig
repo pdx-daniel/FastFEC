@@ -1,15 +1,24 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-pub fn linkPcre(libExe: *std.Build.Step.Compile) void {
-    // Use vendored PCRE2 - we expect src/pcre2 to be present
-    const pcre2BuildOptions = [_][]const u8{
-        "-DPCRE2_CODE_UNIT_WIDTH=8",
-        "-DPCRE2_STATIC",
-        "-DHAVE_CONFIG_H",
-    };
-    libExe.addIncludePath(.{ .cwd_relative = "src/pcre2" });
-    libExe.addCSourceFiles(.{ .files = &pcre2Sources, .flags = &pcre2BuildOptions });
+pub fn linkPcre(vendored_pcre: bool, libExe: *std.Build.Step.Compile) void {
+    if (vendored_pcre) {
+        // Use vendored PCRE2 - we expect src/pcre2 to be present
+        const pcre2BuildOptions = [_][]const u8{
+            "-DPCRE2_CODE_UNIT_WIDTH=8",
+            "-DPCRE2_STATIC",
+            "-DHAVE_CONFIG_H",
+        };
+        libExe.addIncludePath(.{ .cwd_relative = "src/pcre2" });
+        libExe.addCSourceFiles(.{ .files = &pcre2Sources, .flags = &pcre2BuildOptions });
+    } else {
+        // Use system PCRE2 library
+        if (builtin.os.tag == .windows) {
+            libExe.linkSystemLibrary("pcre2-8");
+        } else {
+            libExe.linkSystemLibrary("pcre2-8");
+        }
+    }
 
     if (builtin.os.tag == .macos) {
         // useful for package maintainers
@@ -25,6 +34,7 @@ pub fn build(b: *std.Build) !void {
     const lib_only: bool = b.option(bool, "lib-only", "Only compile the library") orelse false;
     const skip_lib: bool = b.option(bool, "skip-lib", "Skip compiling the library") orelse false;
     const wasm: bool = b.option(bool, "wasm", "Compile the wasm library") orelse false;
+    const vendored_pcre: bool = b.option(bool, "vendored-pcre", "Use vendored PCRE2") orelse true;
 
     // Main build step
     if (!lib_only and !wasm) {
@@ -33,7 +43,7 @@ pub fn build(b: *std.Build) !void {
         fastfec_cli.linkLibC();
 
         fastfec_cli.addCSourceFiles(.{ .files = &libSources, .flags = &buildOptions });
-        linkPcre(fastfec_cli);
+        linkPcre(vendored_pcre, fastfec_cli);
         fastfec_cli.addCSourceFiles(.{ .files = &.{
             "src/cli.c",
             "src/main.c",
@@ -51,7 +61,7 @@ pub fn build(b: *std.Build) !void {
         }
         fastfec_lib.linkLibC();
         fastfec_lib.addCSourceFiles(.{ .files = &libSources, .flags = &buildOptions });
-        linkPcre(fastfec_lib);
+        linkPcre(vendored_pcre, fastfec_lib);
         b.installArtifact(fastfec_lib);
     } else if (wasm) {
         // Wasm library build step
@@ -61,7 +71,7 @@ pub fn build(b: *std.Build) !void {
         fastfec_wasm.import_symbols = true;
         fastfec_wasm.linkLibC();
         fastfec_wasm.addCSourceFiles(.{ .files = &libSources, .flags = &buildOptions });
-        linkPcre(fastfec_wasm);
+        linkPcre(vendored_pcre, fastfec_wasm);
         fastfec_wasm.addCSourceFile(.{ .file = .{ .cwd_relative = "src/wasm.c" }, .flags = &buildOptions });
         b.installArtifact(fastfec_wasm);
     }
@@ -73,7 +83,7 @@ pub fn build(b: *std.Build) !void {
         const subtest_exe = b.addExecutable(.{ .name = base_file, .target = target, .optimize = optimize });
         subtest_exe.linkLibC();
         subtest_exe.addCSourceFiles(.{ .files = &testIncludes, .flags = &buildOptions });
-        linkPcre(subtest_exe);
+        linkPcre(vendored_pcre, subtest_exe);
         subtest_exe.addCSourceFile(.{ .file = .{ .cwd_relative = test_file }, .flags = &buildOptions });
         const subtest_cmd = b.addRunArtifact(subtest_exe);
         if (prev_test_step != null) {
